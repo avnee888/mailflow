@@ -1,6 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Papa from 'papaparse';
+import { useGetEmailsQuery, useScheduleEmailsMutation } from '@/store/api';
 
 type EmailJob = {
   id: string; subject: string; body: string; recipient: string; sender: string; scheduledAt: string; status: string;
@@ -8,7 +9,6 @@ type EmailJob = {
 
 export default function Dashboard() {
   const [tab, setTab] = useState<'scheduled' | 'sent'>('scheduled');
-  const [emails, setEmails] = useState<EmailJob[]>([]);
   const [showCompose, setShowCompose] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -17,14 +17,8 @@ export default function Dashboard() {
   const [scheduledAt, setScheduledAt] = useState('');
   const [recipients, setRecipients] = useState<string[]>([]);
   
-  const fetchEmails = async () => {
-    const url = searchQuery ? `http://localhost:4000/api/search?q=${searchQuery}` : 'http://localhost:4000/api/emails';
-    const res = await fetch(url);
-    const data = await res.json();
-    setEmails(data);
-  };
-
-  useEffect(() => { fetchEmails(); }, [searchQuery]);
+  const { data: emails = [], isLoading } = useGetEmailsQuery(searchQuery);
+  const [scheduleEmails] = useScheduleEmailsMutation();
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -40,19 +34,14 @@ export default function Dashboard() {
 
   const handleSchedule = async () => {
     if (recipients.length === 0) return;
-    await fetch('http://localhost:4000/api/schedule', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subject, body, recipients, sender: 'test@example.com', scheduledAt, tenantId: 'tenant1'
-      })
+    await scheduleEmails({
+      subject, body, recipients, sender: 'test@example.com', scheduledAt, tenantId: 'tenant1'
     });
     setShowCompose(false);
-    fetchEmails();
   };
 
-  const scheduled = emails.filter(e => e.status === 'PENDING');
-  const sent = emails.filter(e => e.status !== 'PENDING');
+  const scheduled = emails.filter((e: EmailJob) => e.status === 'PENDING');
+  const sent = emails.filter((e: EmailJob) => e.status !== 'PENDING');
 
   return (
     <div className="p-8 max-w-5xl mx-auto font-sans">
@@ -85,21 +74,23 @@ export default function Dashboard() {
         <input className="p-2 border rounded" placeholder="Search emails (Elasticsearch)" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
       </div>
 
-      <table className="w-full text-left">
-        <thead>
-          <tr className="border-b bg-gray-50"><th className="p-2">Email</th><th className="p-2">Subject</th><th className="p-2">Time</th><th className="p-2">Status</th></tr>
-        </thead>
-        <tbody>
-          {(tab === 'scheduled' ? scheduled : sent).map(job => (
-            <tr key={job.id} className="border-b">
-              <td className="p-2">{job.recipient}</td>
-              <td className="p-2">{job.subject}</td>
-              <td className="p-2">{new Date(job.scheduledAt).toLocaleString()}</td>
-              <td className="p-2">{job.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {isLoading ? <p>Loading...</p> : (
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b bg-gray-50"><th className="p-2">Email</th><th className="p-2">Subject</th><th className="p-2">Time</th><th className="p-2">Status</th></tr>
+          </thead>
+          <tbody>
+            {(tab === 'scheduled' ? scheduled : sent).map((job: EmailJob) => (
+              <tr key={job.id} className="border-b">
+                <td className="p-2">{job.recipient}</td>
+                <td className="p-2">{job.subject}</td>
+                <td className="p-2">{new Date(job.scheduledAt).toLocaleString()}</td>
+                <td className="p-2">{job.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
