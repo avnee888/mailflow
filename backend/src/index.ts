@@ -54,7 +54,7 @@ app.get('/api/emails', async (req, res) => {
   const page = parseInt(req.query.page as string || '1');
   const tenantId = req.query.tenantId as string;
   const emails = await prisma.emailJob.findMany({
-    where: tenantId ? { tenantId } : undefined,
+    ...(tenantId ? { where: { tenantId } } : {}),
     orderBy: { createdAt: 'desc' },
     take: 50,
     skip: (page - 1) * 50
