@@ -12,8 +12,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@bull-board/api": "^9.10.4",
+    "@bull-board/express": "^9.10.4",
     "@elastic/elasticsearch": "^9.5.1",
-    "@prisma/client": "^7.10.0",
+    "@prisma/client": "^5.22.0",
     "bullmq": "^6.3.11",
     "cors": "^2.8.6",
     "dotenv": "^18.0.5",
@@ -21,7 +23,7 @@
     "ioredis": "^6.0.0",
     "nodemailer": "^10.0.15",
     "passport": "^0.7.0",
-    "prisma": "^8.0.0-rc.19",
+    "prisma": "^5.22.0",
     "redis": "^6.3.0"
   },
   "devDependencies": {

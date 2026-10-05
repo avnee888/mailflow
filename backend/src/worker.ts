@@ -6,9 +6,9 @@ import { indexEmail } from './elastic';
 import { sendSlackNotification } from './slack';
 
 const redis = new Redis({
-
   host: process.env.REDIS_HOST || '127.0.0.1',
   port: parseInt(process.env.REDIS_PORT || '6379'),
+  maxRetriesPerRequest: null,
 });
 
 const MAX_EMAILS_PER_HOUR = parseInt(process.env.MAX_EMAILS_PER_HOUR || '200');
@@ -27,6 +27,9 @@ const transporter = nodemailer.createTransport({
 export const worker = new Worker('emailQueue', async (job) => {
   const { id, recipient, subject, body, sender, tenantId, hourlyLimit } = job.data;
   
+  const record = await prisma.emailJob.findUnique({ where: { id } });
+  if (record?.status === 'SENT') return; // Idempotency check
+
   const hourKey = new Date().toISOString().substring(0, 13);
   const rateKey = `rate:${sender}:${hourKey}`;
   
@@ -40,9 +43,8 @@ export const worker = new Worker('emailQueue', async (job) => {
   
   if (count > limit) {
     const nextHour = new Date();
-    nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
-    const jitter = Math.floor(Math.random() * 60000);
-    const delay = nextHour.getTime() - Date.now() + jitter;
+    nextHour.setUTCHours(nextHour.getUTCHours() + 1, 0, 0, 0);
+    const delay = nextHour.getTime() - Date.now();
     
     console.log(`Rate limit hit for ${sender}. Delaying job ${job.id} by ${delay}ms`);
     
@@ -77,5 +79,6 @@ export const worker = new Worker('emailQueue', async (job) => {
   }
 }, { 
   connection: redis,
-  concurrency: CONCURRENCY
+  concurrency: CONCURRENCY,
+  limiter: { max: 1, duration: MIN_DELAY_MS }
 });

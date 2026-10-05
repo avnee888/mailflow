@@ -3,9 +3,10 @@ import { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import { useGetEmailsQuery, useScheduleEmailsMutation } from '@/store/api';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import toast from 'react-hot-toast';
 
 type EmailJob = {
-  id: string; subject: string; body: string; recipient: string; sender: string; scheduledAt: string; status: string;
+  id: string; subject: string; body: string; recipient: string; sender: string; scheduledAt: string; status: string; updatedAt: string;
 };
 
 export default function Dashboard() {
@@ -48,10 +49,11 @@ export default function Dashboard() {
       complete: (results) => {
         const parsed = results.data.map(row => row.email).filter(Boolean);
         if (parsed.length === 0) {
-          alert("No 'email' column found in CSV.");
+          toast.error("No 'email' column found in CSV.");
           return;
         }
         setRecipients(parsed);
+        toast.success(`Loaded ${parsed.length} recipients`);
       }
     });
   };
@@ -63,9 +65,10 @@ export default function Dashboard() {
         subject, body, recipients, sender: session?.user?.email || 'test@example.com', scheduledAt, 
         tenantId: 'tenant1', delaySecs: parseInt(delaySecs) || 0, hourlyLimit: parseInt(hourlyLimit) || 200
       }).unwrap();
+      toast.success('Emails scheduled successfully');
       setShowCompose(false);
     } catch (error: any) {
-      alert(`Scheduling failed: ${error?.data?.error || error.message || 'Unknown error'}`);
+      toast.error(`Scheduling failed: ${error?.data?.error || error.message || 'Unknown error'}`);
     }
   };
 
@@ -117,9 +120,8 @@ export default function Dashboard() {
             </div>
 
             <input className="block w-full mb-2 p-2 border" type="file" accept=".csv" onChange={handleCsvUpload} />
-            {recipients.length > 0 && <p className="mb-4 text-sm text-gray-600">Loaded {recipients.length} recipients</p>}
             
-            <button onClick={handleSchedule} disabled={isScheduling} className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50">
+            <button onClick={handleSchedule} disabled={isScheduling} className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50 mt-4">
               {isScheduling ? 'Scheduling...' : 'Schedule'}
             </button>
             <button onClick={() => setShowCompose(false)} className="ml-2 text-red-600">Cancel</button>
@@ -137,21 +139,25 @@ export default function Dashboard() {
 
       {isLoading ? <p>Loading...</p> : (
         <>
-          <table className="w-full text-left mb-4">
-            <thead>
-              <tr className="border-b bg-gray-50"><th className="p-2">Email</th><th className="p-2">Subject</th><th className="p-2">Time</th><th className="p-2">Status</th></tr>
-            </thead>
-            <tbody>
-              {(tab === 'scheduled' ? scheduled : sent).map((job: EmailJob) => (
-                <tr key={job.id} className="border-b">
-                  <td className="p-2">{job.recipient}</td>
-                  <td className="p-2">{job.subject}</td>
-                  <td className="p-2">{new Date(job.scheduledAt).toLocaleString()}</td>
-                  <td className="p-2">{job.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {emails.length === 0 ? (
+            <p className="text-gray-500 italic py-8 text-center">No emails found.</p>
+          ) : (
+            <table className="w-full text-left mb-4">
+              <thead>
+                <tr className="border-b bg-gray-50"><th className="p-2">Email</th><th className="p-2">Subject</th><th className="p-2">{tab === 'sent' ? 'Sent Time' : 'Time'}</th><th className="p-2">Status</th></tr>
+              </thead>
+              <tbody>
+                {(tab === 'scheduled' ? scheduled : sent).map((job: EmailJob) => (
+                  <tr key={job.id} className="border-b">
+                    <td className="p-2">{job.recipient}</td>
+                    <td className="p-2">{job.subject}</td>
+                    <td className="p-2">{new Date(tab === 'sent' ? job.updatedAt : job.scheduledAt).toLocaleString()}</td>
+                    <td className="p-2">{job.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           
           {!debouncedSearch && (
             <div className="flex gap-4 items-center">
