@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState<'scheduled' | 'sent'>('scheduled');
   const [emails, setEmails] = useState<EmailJob[]>([]);
   const [showCompose, setShowCompose] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -17,12 +18,13 @@ export default function Dashboard() {
   const [recipients, setRecipients] = useState<string[]>([]);
   
   const fetchEmails = async () => {
-    const res = await fetch('http://localhost:4000/api/emails');
+    const url = searchQuery ? `http://localhost:4000/api/search?q=${searchQuery}` : 'http://localhost:4000/api/emails';
+    const res = await fetch(url);
     const data = await res.json();
     setEmails(data);
   };
 
-  useEffect(() => { fetchEmails(); }, []);
+  useEffect(() => { fetchEmails(); }, [searchQuery]);
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -75,9 +77,12 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="flex gap-4 mb-4 border-b pb-2">
-        <button onClick={() => setTab('scheduled')} className={tab === 'scheduled' ? 'font-bold text-blue-600' : ''}>Scheduled</button>
-        <button onClick={() => setTab('sent')} className={tab === 'sent' ? 'font-bold text-blue-600' : ''}>Sent / Failed</button>
+      <div className="flex justify-between items-center mb-4 border-b pb-2">
+        <div className="flex gap-4">
+          <button onClick={() => setTab('scheduled')} className={tab === 'scheduled' ? 'font-bold text-blue-600' : ''}>Scheduled</button>
+          <button onClick={() => setTab('sent')} className={tab === 'sent' ? 'font-bold text-blue-600' : ''}>Sent / Failed</button>
+        </div>
+        <input className="p-2 border rounded" placeholder="Search emails (Elasticsearch)" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
       </div>
 
       <table className="w-full text-left">

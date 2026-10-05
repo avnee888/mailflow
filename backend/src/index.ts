@@ -50,6 +50,14 @@ app.get('/api/emails', async (req, res) => {
   res.json(emails);
 });
 
+import { searchEmails } from './elastic';
+app.get('/api/search', async (req, res) => {
+  const q = req.query.q as string;
+  if (!q) return res.json([]);
+  const results = await searchEmails(q);
+  res.json(results);
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

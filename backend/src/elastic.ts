@@ -22,3 +22,21 @@ export async function indexEmail(jobData: any) {
     console.error('Elasticsearch indexing failed:', error);
   }
 }
+
+export async function searchEmails(query: string) {
+  try {
+    const result = await esClient.search({
+      index: 'emails',
+      query: {
+        multi_match: {
+          query,
+          fields: ['subject', 'body', 'recipient', 'sender']
+        }
+      }
+    });
+    return result.hits.hits.map((h: any) => h._source);
+  } catch (error) {
+    console.error('Elasticsearch search failed:', error);
+    return [];
+  }
+}
