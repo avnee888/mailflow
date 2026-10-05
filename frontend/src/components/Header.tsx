@@ -5,15 +5,14 @@ export function Header() {
   if (!session) return null;
 
   return (
-    <div className="flex justify-between items-center mb-8 border-b pb-4">
-      <h1 className="text-2xl font-bold">ReachInbox Scheduler</h1>
+    <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+      <h1 className="text-2xl font-semibold tracking-tight text-white/90">ReachInbox Scheduler</h1>
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          {session.user?.image && <img src={session.user.image} alt="Avatar" className="w-8 h-8 rounded-full" />}
-          <span className="font-semibold">{session.user?.name}</span>
-          <span className="text-sm text-gray-500">({session.user?.email})</span>
+        <div className="flex items-center gap-3 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-sm">
+          {session.user?.image && <img src={session.user.image} alt="Avatar" className="w-7 h-7 rounded-full opacity-90" />}
+          <span className="font-medium text-sm text-white/80">{session.user?.name}</span>
         </div>
-        <button onClick={() => signOut()} className="text-red-600 text-sm border border-red-600 px-2 py-1 rounded">Logout</button>
+        <button onClick={() => signOut()} className="text-red-400/90 text-sm border border-red-500/30 hover:bg-red-500/10 px-4 py-2 rounded-full transition-all">Logout</button>
       </div>
     </div>
   );
