@@ -75,7 +75,7 @@ export default function Dashboard() {
     if (recipients.length === 0) return;
     try {
       await scheduleEmails({
-        subject, body, recipients, sender: session?.user?.email || 'test@example.com', scheduledAt, 
+        subject, body, recipients, sender: session?.user?.email || 'test@example.com', scheduledAt: scheduledAt || new Date().toISOString(), 
         tenantId: 'tenant1', delaySecs: parseInt(delaySecs) || 0, hourlyLimit: parseInt(hourlyLimit) || 200
       }).unwrap();
       toast.success('Emails scheduled successfully');
