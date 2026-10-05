@@ -5,11 +5,12 @@ import { prisma } from './db';
 import { indexEmail } from './elastic';
 import { sendSlackNotification } from './slack';
 
-const redis = new Redis({
+const redisOptions = process.env.REDIS_URL ? process.env.REDIS_URL : {
   host: process.env.REDIS_HOST || '127.0.0.1',
   port: parseInt(process.env.REDIS_PORT || '6379'),
-  maxRetriesPerRequest: null,
-});
+  password: process.env.REDIS_PASSWORD,
+};
+const redis = new Redis(redisOptions as any, { maxRetriesPerRequest: null });
 
 const MAX_EMAILS_PER_HOUR = parseInt(process.env.MAX_EMAILS_PER_HOUR || '200');
 const MIN_DELAY_MS = parseInt(process.env.MIN_DELAY_MS || '2000');
