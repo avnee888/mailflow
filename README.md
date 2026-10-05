@@ -57,7 +57,7 @@ BullMQ persists all queue states in Redis. If the Node.js server dies, no jobs a
 
 **Rate Limiting & Concurrency**
 - **Concurrency**: Controlled natively via BullMQ's `concurrency` option on the Worker (set to 5). Parallel execution is thread-safe.
-- **Delay**: A hardcoded `setTimeout` of 2s mimics provider throttling per job.
+- **Delay**: Uses BullMQ's native global limiter `limiter: { max: 1, duration: 2000 }` to throttle provider throughput securely across all workers without blocking the event loop.
 - **Rate Limiting**: Custom logic using Redis counters (`rate:{sender}:{hourKey}`). This ensures exact tenant/sender tracking across multiple scaled worker instances. If the counter exceeds `MAX_EMAILS_PER_HOUR`, we calculate the ms delay to the next top-of-hour, call `job.moveToDelayed()`, and throw a `DelayedError`. The job is paused and safely moved to the next hour block without failing.
 - **Slack Alert**: If the rate limit is hit, an OAuth-generated token is used to post a message directly to the tenant's Slack channel.
 

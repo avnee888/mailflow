@@ -18,6 +18,7 @@ model EmailJob {
   tenantId    String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  sentAt      DateTime?
 }
 
 model Tenant {

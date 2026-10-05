@@ -66,7 +66,7 @@ export const worker = new Worker('emailQueue', async (job) => {
     
     await prisma.emailJob.update({
       where: { id },
-      data: { status: 'SENT' }
+      data: { status: 'SENT', sentAt: new Date() }
     });
     await indexEmail({ id, subject, body, recipient, sender, status: 'SENT', scheduledAt: job.data.scheduledAt });
   } catch (error) {
