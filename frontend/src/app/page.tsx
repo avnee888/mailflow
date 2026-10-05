@@ -37,15 +37,14 @@ export default function Dashboard() {
   };
 
   const handleSchedule = async () => {
-    for (const recipient of recipients) {
-      await fetch('http://localhost:4000/api/schedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject, body, recipient, sender: 'test@example.com', scheduledAt, tenantId: 'tenant1'
-        })
-      });
-    }
+    if (recipients.length === 0) return;
+    await fetch('http://localhost:4000/api/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject, body, recipients, sender: 'test@example.com', scheduledAt, tenantId: 'tenant1'
+      })
+    });
     setShowCompose(false);
     fetchEmails();
   };

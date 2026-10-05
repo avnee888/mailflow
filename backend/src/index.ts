@@ -20,22 +20,27 @@ createBullBoard({
 app.use('/admin/queues', serverAdapter.getRouter());
 
 app.post('/api/schedule', async (req, res) => {
-  const { subject, body, recipient, sender, scheduledAt, tenantId } = req.body;
-  
-  const jobRecord = await prisma.emailJob.create({
-    data: {
-      subject, body, recipient, sender, scheduledAt: new Date(scheduledAt), tenantId
-    }
+  const { subject, body, recipients, sender, scheduledAt, tenantId } = req.body;
+  if (!Array.isArray(recipients) || recipients.length === 0) return res.status(400).json({ error: 'recipients array required' });
+
+  const scheduledDate = new Date(scheduledAt);
+  const delay = Math.max(0, scheduledDate.getTime() - Date.now());
+
+  const jobsData = recipients.map(recipient => ({
+    subject, body, recipient, sender, scheduledAt: scheduledDate, tenantId
+  }));
+
+  await prisma.$transaction(async (tx: any) => {
+    const records = await tx.emailJob.createManyAndReturn({ data: jobsData });
+    const bulkQueue = records.map((record: any) => ({
+      name: 'send-email',
+      data: record,
+      opts: { delay, jobId: record.id }
+    }));
+    await emailQueue.addBulk(bulkQueue);
   });
 
-  const delay = new Date(scheduledAt).getTime() - Date.now();
-  
-  await emailQueue.add('send-email', jobRecord, {
-    delay: Math.max(0, delay),
-    jobId: jobRecord.id
-  });
-
-  res.json({ success: true, job: jobRecord });
+  res.json({ success: true, count: recipients.length });
 });
 
 app.get('/api/emails', async (req, res) => {
