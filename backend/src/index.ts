@@ -58,6 +58,23 @@ app.get('/api/search', async (req, res) => {
   res.json(results);
 });
 
+import { getSlackAuthUrl, handleSlackCallback } from './slack';
+
+app.get('/api/slack/auth', (req, res) => {
+  const tenantId = req.query.tenantId as string || 'tenant1';
+  res.redirect(getSlackAuthUrl(tenantId));
+});
+
+app.get('/api/slack/callback', async (req, res) => {
+  const { code, state } = req.query;
+  try {
+    await handleSlackCallback(code as string, state as string);
+    res.send('<script>window.close();</script>');
+  } catch (err) {
+    res.status(500).send('Slack Auth Failed');
+  }
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

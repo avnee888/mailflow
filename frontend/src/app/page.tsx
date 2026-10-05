@@ -48,6 +48,7 @@ export default function Dashboard() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold">ReachInbox Scheduler</h1>
         <div className="flex gap-4">
+          <a href="http://localhost:4000/api/slack/auth?tenantId=tenant1" target="_blank" className="bg-purple-600 text-white px-4 py-2 rounded">Connect Slack</a>
           <button onClick={() => setShowCompose(true)} className="bg-blue-600 text-white px-4 py-2 rounded">Compose New Email</button>
           <a href="http://localhost:4000/admin/queues" target="_blank" className="bg-gray-200 px-4 py-2 rounded">Queue Dashboard</a>
         </div>

@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import Redis from 'ioredis';
 import { prisma } from './db';
 import { indexEmail } from './elastic';
+import { sendSlackNotification } from './slack';
 
 const redis = new Redis({
 
@@ -24,7 +25,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export const worker = new Worker('emailQueue', async (job) => {
-  const { id, recipient, subject, body, sender } = job.data;
+  const { id, recipient, subject, body, sender, tenantId } = job.data;
   
   const hourKey = new Date().toISOString().substring(0, 13);
   const rateKey = `rate:${sender}:${hourKey}`;
@@ -37,6 +38,7 @@ export const worker = new Worker('emailQueue', async (job) => {
     const delay = nextHour.getTime() - Date.now();
     
     console.log(`Rate limit hit for ${sender}. Delaying job ${job.id} by ${delay}ms`);
+    await sendSlackNotification(tenantId, `🚨 Rate limit exceeded for sender ${sender}. Rescheduling ${job.id} to next hour.`);
     
     await job.moveToDelayed(Date.now() + delay, job.token!);
     throw new DelayedError();
