@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import { useGetEmailsQuery, useScheduleEmailsMutation } from '@/store/api';
 import { useSession, signIn, signOut } from 'next-auth/react';
@@ -14,6 +14,12 @@ export default function Dashboard() {
   const [tab, setTab] = useState<'scheduled' | 'sent'>('scheduled');
   const [showCompose, setShowCompose] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -22,7 +28,7 @@ export default function Dashboard() {
   const [hourlyLimit, setHourlyLimit] = useState('200');
   const [recipients, setRecipients] = useState<string[]>([]);
   
-  const { data: emails = [], isLoading } = useGetEmailsQuery(searchQuery);
+  const { data: emails = [], isLoading } = useGetEmailsQuery(debouncedSearch, { pollingInterval: 5000 });
   const [scheduleEmails] = useScheduleEmailsMutation();
 
   if (!session) {
@@ -74,37 +80,39 @@ export default function Dashboard() {
       <div className="flex justify-between items-center mb-8">
         <div className="flex gap-4">
           <button onClick={() => setShowCompose(true)} className="bg-blue-600 text-white px-4 py-2 rounded">Compose New Email</button>
-          <a href="http://localhost:4000/api/slack/auth?tenantId=tenant1" target="_blank" className="bg-purple-600 text-white px-4 py-2 rounded">Connect Slack</a>
-          <a href="http://localhost:4000/admin/queues" target="_blank" className="bg-gray-200 px-4 py-2 rounded">Queue Dashboard</a>
+          <a href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/slack/auth?tenantId=tenant1`} target="_blank" className="bg-purple-600 text-white px-4 py-2 rounded">Connect Slack</a>
+          <a href={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000'}/admin/queues`} target="_blank" className="bg-gray-200 px-4 py-2 rounded">Queue Dashboard</a>
         </div>
       </div>
 
       {showCompose && (
-        <div className="mb-8 p-4 border rounded bg-gray-50">
-          <h2 className="text-xl mb-4">Compose</h2>
-          <input className="block w-full mb-2 p-2 border" placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} />
-          <textarea className="block w-full mb-2 p-2 border" placeholder="Body" value={body} onChange={e => setBody(e.target.value)} />
-          
-          <div className="flex gap-4 mb-2">
-            <div className="flex-1">
-              <label className="block text-xs text-gray-500 uppercase">Start Time</label>
-              <input className="block w-full p-2 border" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded shadow-lg max-w-xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl mb-4">Compose</h2>
+            <input className="block w-full mb-2 p-2 border" placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} />
+            <textarea className="block w-full mb-2 p-2 border" placeholder="Body" value={body} onChange={e => setBody(e.target.value)} />
+            
+            <div className="flex gap-4 mb-2">
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 uppercase">Start Time</label>
+                <input className="block w-full p-2 border" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 uppercase">Delay (sec)</label>
+                <input className="block w-full p-2 border" type="number" min="0" value={delaySecs} onChange={e => setDelaySecs(e.target.value)} />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 uppercase">Hr Limit</label>
+                <input className="block w-full p-2 border" type="number" min="1" value={hourlyLimit} onChange={e => setHourlyLimit(e.target.value)} />
+              </div>
             </div>
-            <div className="flex-1">
-              <label className="block text-xs text-gray-500 uppercase">Delay Between Emails (sec)</label>
-              <input className="block w-full p-2 border" type="number" min="0" value={delaySecs} onChange={e => setDelaySecs(e.target.value)} />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs text-gray-500 uppercase">Hourly Limit</label>
-              <input className="block w-full p-2 border" type="number" min="1" value={hourlyLimit} onChange={e => setHourlyLimit(e.target.value)} />
-            </div>
-          </div>
 
-          <input className="block w-full mb-2 p-2 border" type="file" accept=".csv" onChange={handleCsvUpload} />
-          {recipients.length > 0 && <p className="mb-4 text-sm text-gray-600">Loaded {recipients.length} recipients</p>}
-          
-          <button onClick={handleSchedule} className="bg-green-600 text-white px-4 py-2 rounded">Schedule</button>
-          <button onClick={() => setShowCompose(false)} className="ml-2 text-red-600">Cancel</button>
+            <input className="block w-full mb-2 p-2 border" type="file" accept=".csv" onChange={handleCsvUpload} />
+            {recipients.length > 0 && <p className="mb-4 text-sm text-gray-600">Loaded {recipients.length} recipients</p>}
+            
+            <button onClick={handleSchedule} className="bg-green-600 text-white px-4 py-2 rounded">Schedule</button>
+            <button onClick={() => setShowCompose(false)} className="ml-2 text-red-600">Cancel</button>
+          </div>
         </div>
       )}
 

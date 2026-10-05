@@ -23,6 +23,22 @@ export async function indexEmail(jobData: any) {
   }
 }
 
+export async function bulkIndexEmails(jobsData: any[]) {
+  if (jobsData.length === 0) return;
+  try {
+    const operations = jobsData.flatMap(doc => [
+      { index: { _index: 'emails', _id: doc.id } },
+      {
+        subject: doc.subject, body: doc.body, recipient: doc.recipient,
+        sender: doc.sender, status: doc.status || 'PENDING', scheduledAt: doc.scheduledAt
+      }
+    ]);
+    await esClient.bulk({ refresh: true, operations });
+  } catch (err) {
+    console.error('ES bulk index failed:', err);
+  }
+}
+
 export async function searchEmails(query: string) {
   try {
     const result = await esClient.search({

@@ -19,6 +19,7 @@ createBullBoard({
 });
 app.use('/admin/queues', serverAdapter.getRouter());
 
+import { searchEmails, bulkIndexEmails } from './elastic';
 app.post('/api/schedule', async (req, res) => {
   const { subject, body, recipients, sender, scheduledAt, tenantId, delaySecs, hourlyLimit } = req.body;
   if (!Array.isArray(recipients) || recipients.length === 0) return res.status(400).json({ error: 'recipients array required' });
@@ -38,19 +39,22 @@ app.post('/api/schedule', async (req, res) => {
       opts: { delay, jobId: record.id }
     }));
     await emailQueue.addBulk(bulkQueue);
+    await bulkIndexEmails(records);
   });
 
   res.json({ success: true, count: recipients.length });
 });
 
 app.get('/api/emails', async (req, res) => {
+  const page = parseInt(req.query.page as string || '1');
   const emails = await prisma.emailJob.findMany({
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    skip: (page - 1) * 50
   });
   res.json(emails);
 });
 
-import { searchEmails } from './elastic';
 app.get('/api/search', async (req, res) => {
   const q = req.query.q as string;
   if (!q) return res.json([]);

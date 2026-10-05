@@ -37,10 +37,15 @@ export const worker = new Worker('emailQueue', async (job) => {
   if (count > limit) {
     const nextHour = new Date();
     nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
-    const delay = nextHour.getTime() - Date.now();
+    // Add jitter: 0 to 60 seconds
+    const jitter = Math.floor(Math.random() * 60000);
+    const delay = nextHour.getTime() - Date.now() + jitter;
     
     console.log(`Rate limit hit for ${sender}. Delaying job ${job.id} by ${delay}ms`);
-    await sendSlackNotification(tenantId, `🚨 Rate limit exceeded for sender ${sender}. Rescheduling ${job.id} to next hour.`);
+    
+    if (count === limit + 1) {
+      await sendSlackNotification(tenantId, `🚨 Rate limit exceeded for sender ${sender}. Rescheduling ${job.id} to next hour.`);
+    }
     
     await job.moveToDelayed(Date.now() + delay, job.token!);
     throw new DelayedError();
