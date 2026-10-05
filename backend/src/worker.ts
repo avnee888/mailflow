@@ -34,7 +34,7 @@ export const worker = new Worker('emailQueue', async (job) => {
   pipeline.incr(rateKey);
   pipeline.expire(rateKey, 3600, 'NX');
   const results = await pipeline.exec();
-  const count = results ? (results[0][1] as number) : 1;
+  const count = (results?.[0]?.[1] as number) || 1;
 
   const limit = hourlyLimit || MAX_EMAILS_PER_HOUR;
   
@@ -72,6 +72,7 @@ export const worker = new Worker('emailQueue', async (job) => {
       where: { id },
       data: { status: 'FAILED' }
     });
+    await indexEmail({ id, subject, body, recipient, sender, status: 'FAILED', scheduledAt: job.data.scheduledAt });
     throw error;
   }
 }, { 

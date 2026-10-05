@@ -58,11 +58,15 @@ export default function Dashboard() {
 
   const handleSchedule = async () => {
     if (recipients.length === 0) return;
-    await scheduleEmails({
-      subject, body, recipients, sender: session?.user?.email || 'test@example.com', scheduledAt, 
-      tenantId: 'tenant1', delaySecs: parseInt(delaySecs) || 0, hourlyLimit: parseInt(hourlyLimit) || 200
-    });
-    setShowCompose(false);
+    try {
+      await scheduleEmails({
+        subject, body, recipients, sender: session?.user?.email || 'test@example.com', scheduledAt, 
+        tenantId: 'tenant1', delaySecs: parseInt(delaySecs) || 0, hourlyLimit: parseInt(hourlyLimit) || 200
+      }).unwrap();
+      setShowCompose(false);
+    } catch (error: any) {
+      alert(`Scheduling failed: ${error?.data?.error || error.message || 'Unknown error'}`);
+    }
   };
 
   const scheduled = emails.filter((e: EmailJob) => e.status === 'PENDING');

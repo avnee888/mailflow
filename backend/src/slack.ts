@@ -2,7 +2,7 @@ import { prisma } from './db';
 
 const SLACK_CLIENT_ID = process.env.SLACK_CLIENT_ID || '';
 const SLACK_CLIENT_SECRET = process.env.SLACK_CLIENT_SECRET || '';
-const REDIRECT_URI = 'http://localhost:4000/api/slack/callback';
+const REDIRECT_URI = process.env.SLACK_REDIRECT_URI || 'http://localhost:4000/api/slack/callback';
 
 export function getSlackAuthUrl(tenantId: string) {
   return `https://slack.com/oauth/v2/authorize?client_id=${SLACK_CLIENT_ID}&scope=chat:write&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${tenantId}`;
