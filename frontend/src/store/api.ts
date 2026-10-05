@@ -5,8 +5,8 @@ export const emailApi = createApi({
   baseQuery: fetchBaseQuery({ baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/' }),
   tagTypes: ['Email'],
   endpoints: (builder) => ({
-    getEmails: builder.query<any[], string | void>({
-      query: (search) => search ? `search?q=${search}` : 'emails',
+    getEmails: builder.query<any[], { search: string; page: number }>({
+      query: ({ search, page }) => search ? `search?q=${search}` : `emails?page=${page}`,
       providesTags: ['Email'],
     }),
     scheduleEmails: builder.mutation<any, any>({

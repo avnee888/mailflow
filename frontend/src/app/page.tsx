@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [showCompose, setShowCompose] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -28,8 +29,8 @@ export default function Dashboard() {
   const [hourlyLimit, setHourlyLimit] = useState('200');
   const [recipients, setRecipients] = useState<string[]>([]);
   
-  const { data: emails = [], isLoading } = useGetEmailsQuery(debouncedSearch, { pollingInterval: 5000 });
-  const [scheduleEmails] = useScheduleEmailsMutation();
+  const { data: emails = [], isLoading } = useGetEmailsQuery({ search: debouncedSearch, page }, { pollingInterval: 5000 });
+  const [scheduleEmails, { isLoading: isScheduling }] = useScheduleEmailsMutation();
 
   if (!session) {
     return (
@@ -46,6 +47,10 @@ export default function Dashboard() {
       header: true,
       complete: (results) => {
         const parsed = results.data.map(row => row.email).filter(Boolean);
+        if (parsed.length === 0) {
+          alert("No 'email' column found in CSV.");
+          return;
+        }
         setRecipients(parsed);
       }
     });
@@ -55,7 +60,7 @@ export default function Dashboard() {
     if (recipients.length === 0) return;
     await scheduleEmails({
       subject, body, recipients, sender: session?.user?.email || 'test@example.com', scheduledAt, 
-      tenantId: 'tenant1', delaySecs: parseInt(delaySecs), hourlyLimit: parseInt(hourlyLimit)
+      tenantId: 'tenant1', delaySecs: parseInt(delaySecs) || 0, hourlyLimit: parseInt(hourlyLimit) || 200
     });
     setShowCompose(false);
   };
@@ -110,7 +115,9 @@ export default function Dashboard() {
             <input className="block w-full mb-2 p-2 border" type="file" accept=".csv" onChange={handleCsvUpload} />
             {recipients.length > 0 && <p className="mb-4 text-sm text-gray-600">Loaded {recipients.length} recipients</p>}
             
-            <button onClick={handleSchedule} className="bg-green-600 text-white px-4 py-2 rounded">Schedule</button>
+            <button onClick={handleSchedule} disabled={isScheduling} className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50">
+              {isScheduling ? 'Scheduling...' : 'Schedule'}
+            </button>
             <button onClick={() => setShowCompose(false)} className="ml-2 text-red-600">Cancel</button>
           </div>
         </div>
@@ -125,21 +132,31 @@ export default function Dashboard() {
       </div>
 
       {isLoading ? <p>Loading...</p> : (
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b bg-gray-50"><th className="p-2">Email</th><th className="p-2">Subject</th><th className="p-2">Time</th><th className="p-2">Status</th></tr>
-          </thead>
-          <tbody>
-            {(tab === 'scheduled' ? scheduled : sent).map((job: EmailJob) => (
-              <tr key={job.id} className="border-b">
-                <td className="p-2">{job.recipient}</td>
-                <td className="p-2">{job.subject}</td>
-                <td className="p-2">{new Date(job.scheduledAt).toLocaleString()}</td>
-                <td className="p-2">{job.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          <table className="w-full text-left mb-4">
+            <thead>
+              <tr className="border-b bg-gray-50"><th className="p-2">Email</th><th className="p-2">Subject</th><th className="p-2">Time</th><th className="p-2">Status</th></tr>
+            </thead>
+            <tbody>
+              {(tab === 'scheduled' ? scheduled : sent).map((job: EmailJob) => (
+                <tr key={job.id} className="border-b">
+                  <td className="p-2">{job.recipient}</td>
+                  <td className="p-2">{job.subject}</td>
+                  <td className="p-2">{new Date(job.scheduledAt).toLocaleString()}</td>
+                  <td className="p-2">{job.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {!debouncedSearch && (
+            <div className="flex gap-4 items-center">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1 border rounded disabled:opacity-50">Previous</button>
+              <span>Page {page}</span>
+              <button onClick={() => setPage(p => p + 1)} disabled={emails.length < 50} className="px-3 py-1 border rounded disabled:opacity-50">Next</button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

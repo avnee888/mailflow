@@ -31,16 +31,21 @@ app.post('/api/schedule', async (req, res) => {
     subject, body, recipient, sender, scheduledAt: scheduledDate, tenantId
   }));
 
-  await prisma.$transaction(async (tx: any) => {
-    const records = await tx.emailJob.createManyAndReturn({ data: jobsData });
-    const bulkQueue = records.map((record: any) => ({
-      name: 'send-email',
-      data: { ...record, delaySecs, hourlyLimit },
-      opts: { delay, jobId: record.id }
-    }));
-    await emailQueue.addBulk(bulkQueue);
-    await bulkIndexEmails(records);
+  const records = await prisma.$transaction(async (tx: any) => {
+    return tx.emailJob.createManyAndReturn({ data: jobsData });
   });
+
+  const parsedDelay = parseInt(delaySecs) || 0;
+  const parsedLimit = parseInt(hourlyLimit) || 200;
+
+  const bulkQueue = records.map((record: any, index: number) => ({
+    name: 'send-email',
+    data: { ...record, hourlyLimit: parsedLimit },
+    opts: { delay: delay + (index * parsedDelay * 1000), jobId: record.id }
+  }));
+  
+  await emailQueue.addBulk(bulkQueue);
+  await bulkIndexEmails(records);
 
   res.json({ success: true, count: recipients.length });
 });
