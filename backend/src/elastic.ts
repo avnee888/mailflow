@@ -16,6 +16,7 @@ export async function indexEmail(jobData: any) {
         sender: jobData.sender,
         status: jobData.status,
         scheduledAt: jobData.scheduledAt,
+        tenantId: jobData.tenantId,
       }
     });
   } catch (error) {
@@ -30,7 +31,7 @@ export async function bulkIndexEmails(jobsData: any[]) {
       { index: { _index: 'emails', _id: doc.id } },
       {
         subject: doc.subject, body: doc.body, recipient: doc.recipient,
-        sender: doc.sender, status: doc.status || 'PENDING', scheduledAt: doc.scheduledAt
+        sender: doc.sender, status: doc.status || 'PENDING', scheduledAt: doc.scheduledAt, tenantId: doc.tenantId
       }
     ]);
     await esClient.bulk({ refresh: true, operations });
@@ -39,14 +40,19 @@ export async function bulkIndexEmails(jobsData: any[]) {
   }
 }
 
-export async function searchEmails(query: string) {
+export async function searchEmails(query: string, tenantId?: string) {
   try {
     const result = await esClient.search({
       index: 'emails',
       query: {
-        multi_match: {
-          query,
-          fields: ['subject', 'body', 'recipient', 'sender']
+        bool: {
+          must: {
+            multi_match: {
+              query,
+              fields: ['subject', 'body', 'recipient', 'sender']
+            }
+          },
+          filter: tenantId ? { term: { "tenantId.keyword": tenantId } } : []
         }
       }
     });

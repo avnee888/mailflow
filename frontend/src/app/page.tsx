@@ -29,7 +29,7 @@ export default function Dashboard() {
   const [hourlyLimit, setHourlyLimit] = useState('200');
   const [recipients, setRecipients] = useState<string[]>([]);
   
-  const { data: emails = [], isLoading } = useGetEmailsQuery({ search: debouncedSearch, page }, { pollingInterval: 5000 });
+  const { data: emails = [], isLoading } = useGetEmailsQuery({ search: debouncedSearch, page, tenantId: session?.user?.email || 'tenant1' }, { pollingInterval: 5000, skip: !session });
   const [scheduleEmails, { isLoading: isScheduling }] = useScheduleEmailsMutation();
 
   if (!session) {
@@ -76,7 +76,7 @@ export default function Dashboard() {
     try {
       await scheduleEmails({
         subject, body, recipients, sender: session?.user?.email || 'test@example.com', scheduledAt: scheduledAt || new Date().toISOString(), 
-        tenantId: 'tenant1', delaySecs: parseInt(delaySecs) || 0, hourlyLimit: parseInt(hourlyLimit) || 200
+        tenantId: session?.user?.email || 'tenant1', delaySecs: parseInt(delaySecs) || 0, hourlyLimit: parseInt(hourlyLimit) || 200
       }).unwrap();
       toast.success('Emails scheduled successfully');
       setShowCompose(false);

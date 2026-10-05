@@ -52,7 +52,9 @@ app.post('/api/schedule', async (req, res) => {
 
 app.get('/api/emails', async (req, res) => {
   const page = parseInt(req.query.page as string || '1');
+  const tenantId = req.query.tenantId as string;
   const emails = await prisma.emailJob.findMany({
+    where: tenantId ? { tenantId } : undefined,
     orderBy: { createdAt: 'desc' },
     take: 50,
     skip: (page - 1) * 50
@@ -62,8 +64,9 @@ app.get('/api/emails', async (req, res) => {
 
 app.get('/api/search', async (req, res) => {
   const q = req.query.q as string;
+  const tenantId = req.query.tenantId as string;
   if (!q) return res.json([]);
-  const results = await searchEmails(q);
+  const results = await searchEmails(q, tenantId);
   res.json(results);
 });
 
