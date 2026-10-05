@@ -20,7 +20,7 @@ createBullBoard({
 app.use('/admin/queues', serverAdapter.getRouter());
 
 app.post('/api/schedule', async (req, res) => {
-  const { subject, body, recipients, sender, scheduledAt, tenantId } = req.body;
+  const { subject, body, recipients, sender, scheduledAt, tenantId, delaySecs, hourlyLimit } = req.body;
   if (!Array.isArray(recipients) || recipients.length === 0) return res.status(400).json({ error: 'recipients array required' });
 
   const scheduledDate = new Date(scheduledAt);
@@ -34,7 +34,7 @@ app.post('/api/schedule', async (req, res) => {
     const records = await tx.emailJob.createManyAndReturn({ data: jobsData });
     const bulkQueue = records.map((record: any) => ({
       name: 'send-email',
-      data: record,
+      data: { ...record, delaySecs, hourlyLimit },
       opts: { delay, jobId: record.id }
     }));
     await emailQueue.addBulk(bulkQueue);

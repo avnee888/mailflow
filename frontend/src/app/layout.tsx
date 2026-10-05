@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { StoreProvider } from "@/store/StoreProvider";
+import { AuthProvider } from "./AuthProvider";
 
 export default function RootLayout({ children }: any) {
   return (
@@ -26,7 +27,9 @@ export default function RootLayout({ children }: any) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <StoreProvider>{children}</StoreProvider>
+        <AuthProvider>
+          <StoreProvider>{children}</StoreProvider>
+        </AuthProvider>
       </body>
     </html>
   );

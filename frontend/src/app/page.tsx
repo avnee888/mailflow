@@ -2,12 +2,15 @@
 import { useState } from 'react';
 import Papa from 'papaparse';
 import { useGetEmailsQuery, useScheduleEmailsMutation } from '@/store/api';
+import { useSession, signIn, signOut } from 'next-auth/react';
 
 type EmailJob = {
   id: string; subject: string; body: string; recipient: string; sender: string; scheduledAt: string; status: string;
 };
 
 export default function Dashboard() {
+  const { data: session } = useSession();
+  
   const [tab, setTab] = useState<'scheduled' | 'sent'>('scheduled');
   const [showCompose, setShowCompose] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -15,10 +18,20 @@ export default function Dashboard() {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
+  const [delaySecs, setDelaySecs] = useState('2');
+  const [hourlyLimit, setHourlyLimit] = useState('200');
   const [recipients, setRecipients] = useState<string[]>([]);
   
   const { data: emails = [], isLoading } = useGetEmailsQuery(searchQuery);
   const [scheduleEmails] = useScheduleEmailsMutation();
+
+  if (!session) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <button onClick={() => signIn('google')} className="bg-blue-600 text-white px-6 py-3 rounded text-lg">Sign in with Google</button>
+      </div>
+    );
+  }
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -35,7 +48,8 @@ export default function Dashboard() {
   const handleSchedule = async () => {
     if (recipients.length === 0) return;
     await scheduleEmails({
-      subject, body, recipients, sender: 'test@example.com', scheduledAt, tenantId: 'tenant1'
+      subject, body, recipients, sender: session?.user?.email || 'test@example.com', scheduledAt, 
+      tenantId: 'tenant1', delaySecs: parseInt(delaySecs), hourlyLimit: parseInt(hourlyLimit)
     });
     setShowCompose(false);
   };
@@ -45,11 +59,22 @@ export default function Dashboard() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto font-sans">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-8 border-b pb-4">
         <h1 className="text-2xl font-bold">ReachInbox Scheduler</h1>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            {session.user?.image && <img src={session.user.image} alt="Avatar" className="w-8 h-8 rounded-full" />}
+            <span className="font-semibold">{session.user?.name}</span>
+            <span className="text-sm text-gray-500">({session.user?.email})</span>
+          </div>
+          <button onClick={() => signOut()} className="text-red-600 text-sm border border-red-600 px-2 py-1 rounded">Logout</button>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center mb-8">
         <div className="flex gap-4">
-          <a href="http://localhost:4000/api/slack/auth?tenantId=tenant1" target="_blank" className="bg-purple-600 text-white px-4 py-2 rounded">Connect Slack</a>
           <button onClick={() => setShowCompose(true)} className="bg-blue-600 text-white px-4 py-2 rounded">Compose New Email</button>
+          <a href="http://localhost:4000/api/slack/auth?tenantId=tenant1" target="_blank" className="bg-purple-600 text-white px-4 py-2 rounded">Connect Slack</a>
           <a href="http://localhost:4000/admin/queues" target="_blank" className="bg-gray-200 px-4 py-2 rounded">Queue Dashboard</a>
         </div>
       </div>
@@ -59,9 +84,25 @@ export default function Dashboard() {
           <h2 className="text-xl mb-4">Compose</h2>
           <input className="block w-full mb-2 p-2 border" placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} />
           <textarea className="block w-full mb-2 p-2 border" placeholder="Body" value={body} onChange={e => setBody(e.target.value)} />
-          <input className="block w-full mb-2 p-2 border" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
+          
+          <div className="flex gap-4 mb-2">
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 uppercase">Start Time</label>
+              <input className="block w-full p-2 border" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 uppercase">Delay Between Emails (sec)</label>
+              <input className="block w-full p-2 border" type="number" min="0" value={delaySecs} onChange={e => setDelaySecs(e.target.value)} />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 uppercase">Hourly Limit</label>
+              <input className="block w-full p-2 border" type="number" min="1" value={hourlyLimit} onChange={e => setHourlyLimit(e.target.value)} />
+            </div>
+          </div>
+
           <input className="block w-full mb-2 p-2 border" type="file" accept=".csv" onChange={handleCsvUpload} />
-          {recipients.length > 0 && <p className="mb-2 text-sm text-gray-600">Loaded {recipients.length} recipients</p>}
+          {recipients.length > 0 && <p className="mb-4 text-sm text-gray-600">Loaded {recipients.length} recipients</p>}
+          
           <button onClick={handleSchedule} className="bg-green-600 text-white px-4 py-2 rounded">Schedule</button>
           <button onClick={() => setShowCompose(false)} className="ml-2 text-red-600">Cancel</button>
         </div>

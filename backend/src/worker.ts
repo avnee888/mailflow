@@ -25,14 +25,16 @@ const transporter = nodemailer.createTransport({
 });
 
 export const worker = new Worker('emailQueue', async (job) => {
-  const { id, recipient, subject, body, sender, tenantId } = job.data;
+  const { id, recipient, subject, body, sender, tenantId, delaySecs, hourlyLimit } = job.data;
   
   const hourKey = new Date().toISOString().substring(0, 13);
   const rateKey = `rate:${sender}:${hourKey}`;
   const count = await redis.incr(rateKey);
   if (count === 1) await redis.expire(rateKey, 3600);
 
-  if (count > MAX_EMAILS_PER_HOUR) {
+  const limit = hourlyLimit || MAX_EMAILS_PER_HOUR;
+  
+  if (count > limit) {
     const nextHour = new Date();
     nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
     const delay = nextHour.getTime() - Date.now();
@@ -44,7 +46,8 @@ export const worker = new Worker('emailQueue', async (job) => {
     throw new DelayedError();
   }
 
-  await new Promise(r => setTimeout(r, MIN_DELAY_MS));
+  const delayMs = delaySecs !== undefined ? delaySecs * 1000 : MIN_DELAY_MS;
+  await new Promise(r => setTimeout(r, delayMs));
 
   try {
     await transporter.sendMail({
