@@ -70,6 +70,13 @@ export default function Dashboard() {
       }
     });
   };
+  const localDateTimeToISOString = (dateTime: string) => {
+  if (!dateTime) return new Date().toISOString();
+
+  const localDate = new Date(dateTime);
+
+  return localDate.toISOString();
+};
 
   const handleSchedule = async () => {
     if (recipients.length === 0) return;
